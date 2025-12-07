@@ -33,15 +33,30 @@ let next_prime = ():number => {
 }
 
 let P30 = (1<<30)-(1<<8)-1
+
+
 let P16 = 65519
+is_prime(P16)
+let P5 = (1<<5) - 1
 let P8 = (1<<8) - 4-1
 
-let P5 = (1<<5) - 1
 
-let field = P5
+let field = P8
+print("field:", field)
+
+
+
+let r = 6;
+let x = r;
+
+let ls = [1,x]
 
 for (let i = 0; i < field; i++) {
-  print([i, i**3 % field])
+  x = x * r % field
+  ls.push(x)
+  if (x == 1) break
 }
 
-plot(range(field).map(i=>i**3 % field))
+plot(ls)
+
+

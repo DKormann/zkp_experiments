@@ -153,6 +153,7 @@ export const popup = (...cs:HTMLArg[])=>{
         paddingBottom: "2em",
         borderRadius: "1em",
         zIndex: "2000",
+        overflowY: "scroll",
       }
     },
     ...cs)
@@ -496,7 +497,8 @@ export const plot = (x:number[]) => {
   if (logger == null) create_terminal();
   let plt = div()
   let mx = Math.max(...x);
-  let mn = Math.min(...x);
+  // let mn = Math.min(...x);
+  let mn = 0;
   let info = {N: x.length, Y: `${mn}..${mx}`, X:x}
   print(info)
   let dx = 200 / (x.length);
@@ -508,16 +510,17 @@ export const plot = (x:number[]) => {
   }
   path += ` L${x.length*dx} 100 Z`;
   plt.innerHTML = ` <svg viewBox="0 0 200 100" width="calc( min(100%, 400px) )">
-  <path d="${path}" fill="var(--color)" stroke="var(--color)" stroke-width="1" /></svg>`
+  <path d="${path}" fill="var(--color)" stroke="var(--color)" stroke-width="0" /></svg>`
   logger.append(plt)
   plt.onclick = ()=>{
     let pop = div()
-    pop.innerHTML = ` <svg viewBox="0 0 200 100" width="100vw" style="z-index: 4000;">
-    <path d="${path}" fill="var(--color)" stroke="var(--color)" stroke-width="1" /></svg>`
-    popup(p(preview({N: x.length, Y: `${mn}..${mx}`}), style({
+    pop.innerHTML = ` <svg viewBox="0 0 200 100" width="90vw" style="z-index: 4000;">
+    <path d="${path}" fill="var(--color)" stroke="var(--color)" stroke-width="0" /></svg>`
+    let win = popup(p(preview(info), style({
       margin: "2em",
       cursor: "pointer",
     })), pop)
+    pop.addEventListener("click", (e)=>{win.remove()})
   }
   console.log(plt)
 }

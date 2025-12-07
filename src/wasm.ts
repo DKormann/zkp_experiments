@@ -88,6 +88,7 @@ const compile = (fs : Func[]) => {
   let exps = fs.map((f,i)=>[f,i] as [Func, number]).filter(([f,i])=>f.export)
   let exports = section("export", exps.map(([f,i])=>[...wasm.string(f.name), 0x00, i]))
 
+
   let raster = (f: wasmCode):number[] =>
     f.op === "local" ? [wasm.ops.i32.get, f.idx] : [f.args.map(raster).flat(), wasm.ops.i32[f.op]].flat()
 
@@ -111,4 +112,9 @@ bf.map(b=>b.map(b=>b.toString(16)).join(" "))
 let as = (await WebAssembly.instantiate(Uint8Array.from(bf.flat()).buffer))
   .instance.exports.main as (x:number, y:number) => [number, number]
 
+
+
+// print(as(
+//   1,2
+// ))
 

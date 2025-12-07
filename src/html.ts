@@ -95,6 +95,10 @@ export const tr:HTMLGenerator<HTMLTableRowElement> = newHtmlGenerator("tr")
 export const td:HTMLGenerator<HTMLTableCellElement> = newHtmlGenerator("td")
 export const th:HTMLGenerator<HTMLTableCellElement> = newHtmlGenerator("th")
 
+export const canvas:HTMLGenerator<HTMLCanvasElement> = newHtmlGenerator("canvas")
+
+// export const svg:SVGElement = document.createElement("svg");
+
 export const style = (...rules: Record<string, string>[]) => {
   return {style: Object.assign({}, ...rules)}
 }
@@ -143,11 +147,12 @@ export const popup = (...cs:HTMLArg[])=>{
   const dialogfield = div(
     {
       style: {
-        background: "var(--background)",
+        background: "var(--background-color)",
         color: "var(--color)",
         padding: "1em",
         paddingBottom: "2em",
         borderRadius: "1em",
+        zIndex: "2000",
       }
     },
     ...cs)
@@ -163,6 +168,7 @@ export const popup = (...cs:HTMLArg[])=>{
       display: "flex",
       justifyContent: "center",
       alignItems: "center",
+      zIndex: "2000",
     }}
   )
 
@@ -209,28 +215,43 @@ const brackets = (typ: string): [string, string] => {
   else return ["", ""]
 }
 
-const preview = (x:any) : HTMLElement=> {
-
-  let size = 40;
+const preview_text = (x:any, maxsize = 100) : string => {
   let t = typ(x);
+  let bracks = brackets(t);
+  let inner = ""
 
-  let inner = t == "array" ? x.slice(0,10).toString() :
-  t == "function" ? x.toString() :
-  t == "htmlElement" ? (x.tagName + x.textContent) :
-  t == "object" ? Object.entries(x).slice(0,3).map(([key, value])=>key + ": " + String(value)).join(", ") :
-  String(x)
+  if (t == "array"){
+    for (let i = 0; i < x.length; i++){
+      inner += preview_text(x[i], maxsize - inner.length);
+      if (i < x.length - 1) inner += ", ";
+      if (inner.length >= maxsize) break;
+    }
 
+  } else if (t == "object"){
+    for (let [key, value] of Object.entries(x)){
+      inner += key + ": " + preview_text(value, maxsize - inner.length) + ", ";
+      if (inner.length >= maxsize) break;
+    }
+  } else if (t == "function"){
+    inner = x.toString()
+  } else if (t == "htmlElement"){
+    inner = x.tagName + x.textContent
+  }else inner = String(x).slice(0, maxsize)
+
+  String(x).slice(0, maxsize)
+  return bracks[0] + inner + bracks[1]
+}
+
+const preview = (x:any) : HTMLElement=> {
+  let t = typ(x);
+  let inner = preview_text(x);
   if (t != "string") inner = inner.replaceAll("\n", "")
   let ret = span(
-
     {
       style: {marginLeft: "0.5em"},
       onclick: brackets(t)[0] != "" ?
-      ()=>{
-        ret.replaceWith(full_view(x))
-      } : undefined
-    },
-    `${brackets(t)[0]}${inner}${brackets(t)[1]}`) 
+      ()=>{ ret.replaceWith(full_view(x)) } : undefined
+    }, inner) 
   return ret
 }
 
@@ -310,7 +331,15 @@ const termline = (tag:string, content): HTMLElement => {
     ),
     
     
-    {style: {margin: ".5em 1em .5em 1em", paddingBottom: "0.5em", fontFamily: "monospace", cursor: "pointer", whiteSpace: "pre-wrap", fontSize: "0.92em", borderBottom: "1px solid #aaa"}}, content)
+    {style: {
+      width: "100%",
+      margin: ".5em 1em .5em 1em",
+      paddingBottom: "0.5em",
+      fontFamily: "monospace",
+      cursor: "pointer",
+      whiteSpace: "pre-wrap",
+      fontSize: "0.92em",
+      borderBottom: "1px solid #aaa"}}, content)
 }
 
 let logger = null;
@@ -333,17 +362,20 @@ hist.subscribe(h=>inp = h);
 
 const create_terminal = ()=>{
 
-  let terminal = div({style: {
+  let terminal = div(
+    {
+      class: "terminal",
+      style: {
     position: "fixed",
+    background:"var(--background-color)",
     top: "0",
     right: "0",
-    width: "50%",
+    width: "100%",
     height: "100%",
     border: "1px solid #888",
     borderRadius: "1em",
-    background : "var(--background)",
     overflowY: "scroll",
-    zIndex: "1000",
+    zIndex: "900",
     fontFamily: "monospace",
 
   }})
@@ -380,8 +412,8 @@ const create_terminal = ()=>{
 
 
   let content = div({style: {
-    height: "100%",
-    width: "100%",
+    margin: "0",
+    padding: "0",
     overflowY: "scroll",
   }})
 
@@ -404,7 +436,7 @@ const create_terminal = ()=>{
   })
 
   body.appendChild(terminal)
-  logger = div()
+  logger = div(style({width: "100%", padding: "0em"}))
 
   let hist_pos = 0;
 
@@ -442,7 +474,8 @@ const create_terminal = ()=>{
     }
   })
 
-  content.append(logger, terminal_input)
+  content.append(logger)
+  content.append(terminal_input)
 }
 
 export type repr = {tag: string, args: Record<string, any>}
@@ -450,12 +483,43 @@ export type repr = {tag: string, args: Record<string, any>}
 export const print = (...x:any[])=>{
 
   out.push(...x);
-  if (logger == null)create_terminal();
+  if (logger == null) create_terminal();
   const tl = termline(`out[${out.length-1}]: `, x.map(preview));
 
   logger.appendChild(tl)
   terminal_input.scrollIntoView({ block: "end"})
   return x[x.length-1];
+}
+
+export const plot = (x:number[]) => {
+
+  if (logger == null) create_terminal();
+  let plt = div()
+  let mx = Math.max(...x);
+  let mn = Math.min(...x);
+  let info = {N: x.length, Y: `${mn}..${mx}`, X:x}
+  print(info)
+  let dx = 200 / (x.length);
+  let dy = 100 / (mx - mn);
+  let path = `M0 100`;
+  for (let i = 0; i < x.length; i++) {
+    let y = 100 - (x[i] - mn) * dy;
+    path += ` L${i*dx} ${y} L${(i+1)*dx} ${y}`;
+  }
+  path += ` L${x.length*dx} 100 Z`;
+  plt.innerHTML = ` <svg viewBox="0 0 200 100" width="calc( min(100%, 400px) )">
+  <path d="${path}" fill="var(--color)" stroke="var(--color)" stroke-width="1" /></svg>`
+  logger.append(plt)
+  plt.onclick = ()=>{
+    let pop = div()
+    pop.innerHTML = ` <svg viewBox="0 0 200 100" width="100vw" style="z-index: 4000;">
+    <path d="${path}" fill="var(--color)" stroke="var(--color)" stroke-width="1" /></svg>`
+    popup(p(preview({N: x.length, Y: `${mn}..${mx}`}), style({
+      margin: "2em",
+      cursor: "pointer",
+    })), pop)
+  }
+  console.log(plt)
 }
 
 

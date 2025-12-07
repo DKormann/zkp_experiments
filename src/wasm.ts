@@ -6,7 +6,6 @@ const sized = (...code: (number | number[])[]) =>{
   return [fl.length, ...fl]
 } 
 
-
 export const repeat = <T> (length:number, ...value:T[]) : Array<T> => Array.from({length}, _=>value).flat()
 
 const wasm = {
@@ -90,7 +89,7 @@ const compile = (fs : Func[]) => {
   let exports = section("export", exps.map(([f,i])=>[...wasm.string(f.name), 0x00, i]))
 
   let raster = (f: wasmCode):number[] =>
-    f.op === "local" ? [wasm.ops.i32.get, f.idx] : [f.args.map(raster).flat(), wasm.ops.i32[print(f.op)]].flat()
+    f.op === "local" ? [wasm.ops.i32.get, f.idx] : [f.args.map(raster).flat(), wasm.ops.i32[f.op]].flat()
 
   let code = section("code", fs.map((f)=>sized([0, ...raster(f.code), wasm.ops.end])))
   return [ wasm.header, types, funcs, exports, code ]
@@ -108,10 +107,8 @@ let bf = compile([{
   }
 ])
 
-bf.map(b=>print(b.map(b=>b.toString(16)).join(" ")))
-
-let as = (await WebAssembly.instantiate(Uint8Array.from(bf.flat()).buffer)).instance.exports.main as (x:number, y:number) => [number, number]
-print(as)
-print(as(1, 2))
+bf.map(b=>b.map(b=>b.toString(16)).join(" "))
+let as = (await WebAssembly.instantiate(Uint8Array.from(bf.flat()).buffer))
+  .instance.exports.main as (x:number, y:number) => [number, number]
 
 

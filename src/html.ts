@@ -200,7 +200,6 @@ const typ = (x:any): string => {
   if (x == undefined) return "undefined"
   else if (x instanceof Function) return "function"
   else if (x instanceof HTMLElement) return "htmlElement"
-
   else if (x instanceof Object) {
     let keys = Object.keys(x);
     // if (keys.length == 2 && keys.includes("tag") && keys.includes("args")) return "repr";
@@ -233,11 +232,10 @@ const preview_text = (x:any, maxsize = 100) : string => {
       inner += key + ": " + preview_text(value, maxsize - inner.length) + ", ";
       if (inner.length >= maxsize) break;
     }
-  } else if (t == "function"){
-    inner = x.toString()
-  } else if (t == "htmlElement"){
-    inner = x.tagName + x.textContent
-  }else inner = String(x).slice(0, maxsize)
+  } else if (t == "function") inner = x.toString()
+  else if (t == "htmlElement") inner = x.tagName + x.textContent
+  else if (t == "bigint") inner = String(x).slice(0,maxsize-1) + "n"
+  else inner = String(x).slice(0, maxsize)
 
   String(x).slice(0, maxsize)
   return bracks[0] + inner + bracks[1]

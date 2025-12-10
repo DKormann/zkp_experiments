@@ -246,8 +246,6 @@ const preview_text = (x:any, maxsize = 100) : string => {
   return bracks[0] + inner + bracks[1]
 }
 
-
-
 const preview = (x:any) : HTMLElement=> {
   let t = typ(x);
   let inner = preview_text(x);
@@ -315,7 +313,6 @@ const full_view = (x:any): HTMLElement => {
     ),
     closers[1]);
   return ret;
-
 
 }
 

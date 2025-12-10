@@ -1,5 +1,6 @@
 import { Stored, Writable } from "./store"
 
+
 export type htmlKey = 'innerText'|'onclick' | 'oninput' | 'onkeydown' |'children'|'class'|'id'|'contentEditable'|'eventListeners'|'color'|'background' | 'style' | 'placeholder' | 'tabIndex' | 'colSpan'
 
 export const htmlElement = (tag:string, text:string, cls:string = "", args?:Partial<Record<htmlKey, any>>):HTMLElement =>{
@@ -215,12 +216,16 @@ const brackets = (typ: string): [string, string] => {
   else return ["", ""]
 }
 
+
+
+export const rmap = new WeakMap<any, string>();
+
 const preview_text = (x:any, maxsize = 100) : string => {
   let t = typ(x);
   let bracks = brackets(t);
   let inner = ""
-
-  if (t == "array"){
+  if (rmap.has(x)) return rmap.get(x)
+  else if (t == "array"){
     for (let i = 0; i < x.length; i++){
       inner += preview_text(x[i], maxsize - inner.length);
       if (i < x.length - 1) inner += ", ";
@@ -240,6 +245,8 @@ const preview_text = (x:any, maxsize = 100) : string => {
   String(x).slice(0, maxsize)
   return bracks[0] + inner + bracks[1]
 }
+
+
 
 const preview = (x:any) : HTMLElement=> {
   let t = typ(x);
@@ -489,6 +496,8 @@ export const print = (...x:any[])=>{
   terminal_input.scrollIntoView({ block: "end"})
   return x[x.length-1];
 }
+
+
 
 export const plot = (x:number[]) => {
 

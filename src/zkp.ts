@@ -60,40 +60,15 @@ const pow = (a:number, b:number) => {
 }
 
 
-// for (let i = 0; i < 100; i++) {
-//   // if (pow(i, 3854) == 1){
-//   //   print(i)
-//   // }
-
-//   let t = 1;
-//   for (let j = 0; j < 3855; j++) {
-//     t = mul(t, i)
-//     if (t == 1) {
-//       if (j > 100){
-//         print({i, j})
-//       }
-//       break
-//     }
-//   }
-// }
-
 
 let omega = 58
 let roots_n = 3854
-
-// let roots_n = 3854 / 82;
-// let omega = 2209;
-
-// print({roots_n, omega})
-
 
 
 let roots = [1]
 for (let i = 0; i < roots_n; i++) {
   roots.push(mul(roots[i], omega))
 }
-
-
 
 
 
@@ -117,7 +92,6 @@ let get_root = (n:number)=> {
   return roots[(n + roots_n) % roots_n]}
 
 
-
 const IFFT = (evals: number[]) =>{
 
   let ninv = inverse(roots_n)
@@ -127,57 +101,57 @@ const IFFT = (evals: number[]) =>{
   .reduce((acc, curr) => add(acc, curr), 0))
   .map(c=> mul(c, ninv))
   return c
-
 }
-{
-  let samples = [0,1,2]
-  let coeff = FFT(samples)
-
-  let x = roots.slice(0, samples.length)
-  let y = x.map(x=> coeff.reduce((acc, curr, i)=> add(acc, mul(curr, pow(x, i))), 0))
-  print(y)
-}
-
-
-
 
 
 // {
+//   let samples = [0,1,2]
+//   let coeff = IFFT(samples)
 
+//   print({coeff})
 
-//   // toy example
-
-//   // can i prove i know a number that devides 25?
-
-
-//   // devides(25, X) = true
-
-//   // mul (X, Y) = 25
-
-//   //X: number one
-//   //Y: number two
-//   //R: result
-
-//   // constraint:
-
-//   // if t is set : R = X * Y
-//   // C[i] = t[i] * (X[i] * Y[i] - R[i]) == 0
-//   // boundary: R[0] == 25
-
-//   // todo:
-//   // merkle tree of many checks for all polynomials
-//   // FRI proof that all polys are low degree
-
-
-
-
-//   [
-//     {X: 5, Y: 5, R: 25},
-//     {X: 3, Y: 2, R: 6},
-//     {X: 1, Y: 9, R: 9},
-//   ]
-
+//   let x = roots.slice(0, samples.length)
+//   let y = x.map(x=> coeff.reduce((acc, curr, i)=> add(acc, mul(curr, pow(x, i))), 0))
+//   print(y)
 // }
+
+
+
+
+{
+
+
+  // toy example
+
+  // can i prove i know a number that devides 25?
+
+
+  // devides(25, X) = true
+
+  // mul (X, Y) = 25
+
+  //X: number one
+  //Y: number two
+  //R: result
+
+  // constraint:
+
+  // if t is set : R = X * Y
+  // C[i] = t[i] * (X[i] * Y[i] - R[i]) == 0
+  // boundary: R[0] == 25
+
+  // todo:
+  // merkle tree of many checks for all polynomials
+  // FRI proof that all polys are low degree
+
+
+
+
+  [
+    {X: 5, Y: 5, R: 25},
+  ]
+
+}
 
 
 

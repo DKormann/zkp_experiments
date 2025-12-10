@@ -59,6 +59,29 @@ const pair = (X:Expr, Y:Expr):Expr => instance({T: Pair(X.T, Y.T), X: X, b: Y})
 const unify = (a:T, b:T): boolean => JSON.stringify(a) == JSON.stringify(b)
 
 
+const judge = (e:Expr, ctx: Map<Var, Expr>): boolean => {
+
+  if (e.tag == "var") return ctx.has(e) && unify(ctx.get(e).T, e.T)
+  if (e.tag == "app"){
+    let {T, f, x} = e
+    let Tx = null
+    if (f.T.tag != "function") return false
+
+    let {X, Y} = (f.T as {X:T, Y:Instance & ({T: Fun} | {T: Type})})
+    if (!unify(x.T, X)) return false
+
+    if (Y.T.tag == "type") if (!unify(Y.X as T, f.T)) return false
+    else{
+      
+
+      // let ft = reduce({tag: "app", })
+    }
+
+
+  }
+
+}
+
 const reduce = (e:Expr, ctx:Map<Var, Expr>): Expr => {
 
   if (e.tag == "app"){

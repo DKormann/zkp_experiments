@@ -220,7 +220,7 @@ const brackets = (typ: string): [string, string] => {
 
 export const rmap = new WeakMap<any, string>();
 
-const preview_text = (x:any, maxsize = 100) : string => {
+export const preview_text = (x:any, maxsize = 100) : string => {
   let t = typ(x);
   let bracks = brackets(t);
   let inner = ""
@@ -519,11 +519,11 @@ export const graph = (x:number[], bars: boolean) => {
   let dx = 200 / (x.length);
   let gy = (y:number) => 100 - (y - mn + df * .05) * 100 / (mx - mn + df * .1);
   let path = `M0 ${bars ? 100 : gy(x[0])}`
-  + x.map((x, i)=> bars ? ` L${i*dx} ${gy(x)} L${(i+1)*dx} ${gy(x)}` : ` L${i*dx} ${gy(x)}`).join("");
+  + x.map((x, i)=> bars ? ` L${i*dx} ${gy(x)} L${(i+1)*dx} ${gy(x)}` : ` L${i*dx} ${gy(x)}`).join("")
+  + (bars ? ` L${x.length*dx} 100 Z` : "");
 
-  if (bars)path += ` L${x.length*dx} 100 Z`;
   let svg = (width: string) => ` <svg viewBox="0 0 200 100" width="${width}"> 
-  <path d="${path}" ${bars? 'fill="var(--color)"  stroke-width="0"' : 'stroke="var(--color)" stroke-width="1" fill=none'} /></svg>`
+  <path d="${path}" ${bars ? 'fill="var(--color)"  stroke-width="0"' : 'stroke="var(--color)" stroke-width="1" fill=none'} /></svg>`
   plt.innerHTML = svg("calc( min(100%, 400px) )")
   logger.append(plt)
   plt.onclick = ()=>{

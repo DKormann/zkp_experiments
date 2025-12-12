@@ -1,4 +1,4 @@
 // import "./wasm"
-import "./zkp"
+// import "./zkp"
 // import "./type_system"
-// import "./bridge_type/ast"
+import "./bridge_type/types"

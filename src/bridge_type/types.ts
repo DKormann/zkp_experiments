@@ -1,5 +1,7 @@
-import { canvas, p, plot, print as print_html, style } from "../html";
+import { canvas, p, plot, print, print as print_html, style } from "../html";
 
+
+import "./IC"
 
 import { AUX2, MAIN, Nod, Port, Tag } from "./IC";
 
@@ -47,6 +49,8 @@ import { AUX2, MAIN, Nod, Port, Tag } from "./IC";
 // const Bin = (op: binop, A: Ast, B: Ast): BinAst => [op, A, B]
 // const App = (f: Ast, x: Ast) => Bin("app", f, x)
 // const Annot = (x: Ast, T: Ast) => Bin("annot", x, T)
+
+
 
 
 // const Fun = Lam((A: Ast) => Lam((B: Ast) => Bridge((f: Ast) => Lam((x: Ast) =>
@@ -101,4 +105,5 @@ import { AUX2, MAIN, Nod, Port, Tag } from "./IC";
 // print(Fun)
 
 // // print_html(Fun)
+
 

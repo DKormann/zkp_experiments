@@ -1,4 +1,4 @@
-import { print, error } from "../html"
+import { print, error, preview_text } from "../html"
 
 type utag = "lam" | "bridge"
 type btag = "app" | "annot" | "dup" | "sup"
@@ -43,6 +43,10 @@ export const wire = (ic: Port, other: Port)=> {
 
 
 const erase = (era:Nod, app:Nod) => {
+  print("erase", era.tag, app.tag)
+  print(preview_text(era.con))
+  print(preview_text(app.con[AUX1]))
+
   wire({node:{...era}, num:MAIN}, app.con[AUX1])
   wire({node:{...era}, num:MAIN}, app.con[AUX2])
 }
@@ -64,10 +68,19 @@ const commute = (dup:Nod, lam:Nod) => {
   wire({node:new_[1][1], num:2}, {node:new_[0][0], num:1})
 }
 
+
+
 const annihilate = (app:Nod, lam:Nod) => {
-  if (app.con[AUX1] != null && lam.con[AUX1] != null) wire(app.con[AUX1], lam.con[AUX1])
-  if (app.con[AUX2] != null && lam.con[AUX2] != null) wire(app.con[AUX2], lam.con[AUX2])
+  print("annihilate")
+  print(preview_text(app.con))
+  print(preview_text(lam.con))
+  if (app.con[AUX1] && lam.con[AUX1]) wire(app.con[AUX1], lam.con[AUX1])
+  if (app.con[AUX2] && lam.con[AUX2]) wire(app.con[AUX2], lam.con[AUX2])
 }
+
+
+
+
 
 export const redex = (node:Nod):boolean => {
 
@@ -75,13 +88,36 @@ export const redex = (node:Nod):boolean => {
 
   let other = node.con[MAIN].node
 
-  switch ([node.tag, other.tag]){
-    case ["unity"]: case ["era"]: erase (node, other)
-    case ["dup", "lam"]: case ["app", "sup"]: commute (node, other)
-    case ["app", "lam"]: case ["annot", "bridge"]: annihilate (node, other)
-  }
+
+  let tags =  node.tag + " " + other.tag
+
+  if (node.tag == "era" && (other.tag == "app" || other.tag == "annot" || other.tag == "sup")) erase (node, other)
+  else if (tags == "dup lam" || tags == "app sup") commute (node, other)
+  else if (tags == "app lam" || tags == "annot bridge") annihilate (node, other)
+  else return false
+
 }
 
+
+export const exec = (term: Port) => {
+
+  let rt = root()
+  wire(term, rt)
+
+  while (true){
+    let red = false
+    for (let node of walk_node(term.node)){
+
+      if (redex(node)) {
+        print("FOUND")
+        red = true
+        break
+      }
+    }
+    if (!red) break
+  }
+  return other(rt)
+}
 
 
 export const main = (node: Nod): Port => ({node, num: MAIN})
@@ -100,6 +136,9 @@ export const nod = (tag: Tag, label = null, con: [Port, Port, Port] = [null, nul
 export const unit = (): Port => main(nod("unity"))
 export const era = (): Port => main(nod("era"))
 export const root = (): Port => main(nod("root"))
+
+export const app = (f: Port, x: Port): Port => main(nod("app", 0, [f, x, root()]))
+export const annot = (x: Port, T: Port): Port => main(nod("annot", 0, [x, T, root()]))
 
 
 export function* walk_node (x:Nod, ctx: Set<Nod>= null) : Generator<Nod> {
@@ -168,22 +207,26 @@ const view_term = (term: Port): string => {
   let varname = (x:Nod) => "x" + ctx.set(x, ctx.get(x) ?? ctx.size).get(x)
   if (tag == "lam" || tag == "bridge"){
     if (num == AUX1) return varname(node)
-    return `${tag == "lam" ? "λ" : "θ"}${ con[AUX1].node.tag == "era" ? "" : varname(node)} ${view_term(con[AUX2])}`
+    return `${tag == "lam" ? "λ" : "θ"}${ con[AUX1].node.tag == "era" ? "" : varname(node)}.${view_term(con[AUX2])}`
   }
+  if (tag == "app") return `(${view_term(con[0])} ${view_term(con[1])})`
+  if (tag == "annot") return `(${view_term(con[0])} : ${view_term(con[1])})`
   if (tag == "unity") return "()"
   if (tag == "era") return "*"
   if (tag == "root") return "@"
-
   return `[[${tag}]]`
 }
 
+const print_term = (term: Port) => print(view_term(term))
 
 
 
 {
-  let l = Lam((x:Port)=>x)
-  print(view_term(l))
-  print(view_term(unit()))
-  print(view_term(Bridge((x:Port)=>unit())))
 
+  let t = app(Lam((x:Port)=>unit()), unit())
+  print_term(t)
+  exec(t)
+  print_term(t)
 }
+
+

@@ -1,5 +1,5 @@
 
-import { plot, print } from "./html";
+import { bars, plot, print } from "./html";
 const range = (n:number) => Array.from({length: n}, (_,i)=>i)
 
 type element = {
@@ -104,19 +104,10 @@ const IFFT = (evals: number[]) =>{
 }
 
 
-// {
-//   let samples = [0,1,2]
-//   let coeff = IFFT(samples)
+let X = Array.from({length: 100}, (_,i)=>i)
 
-//   print({coeff})
-
-//   let x = roots.slice(0, samples.length)
-//   let y = x.map(x=> coeff.reduce((acc, curr, i)=> add(acc, mul(curr, pow(x, i))), 0))
-//   print(y)
-// }
-
-
-
+plot(X.map(x=>Math.sin(x/10) ))
+bars(X.map(x=>Math.sin(x/10) ))
 
 {
 

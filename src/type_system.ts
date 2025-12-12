@@ -1,126 +1,134 @@
 import { print, rmap } from "./html";
+import "./bridge_type/IC"
 
 
-type Unity = {tag: "unity"}
-type Fun = {tag: "function", X: T, Y: Instance & ({T: Fun} | {T: Type})}
-type Sigma = {tag: "sigma", X: T, Y: Expr}
-type Eq = {tag: "EQ", T:T}
-type Choice = {tag: "enum", A: T, B :T}
-type Type = {tag: "type"}
-
-
-type T = | Unity
-| Fun
-| Sigma
-| Choice
-| Unity
-| Eq
-| Type
-
-
-type App = {T: T, X: Expr, Y: Expr}
-type Var = {tag: "var", T: T}
-
-type Instance =
-  {T: Unity, X: null}
-  | {T: Fun, v: Var, X: Expr}
-  | {T: Sigma, X: Expr, b: Expr}
-  | {T: Choice, case: 0 | 1, X: T}
-  | {T: Eq, X: T}
-  | {T: Type, X: T}
-
-type Expr =
-  {tag: "instance"} & Instance
-  | Var
-  | {tag: "app", T: T, f: Expr, x: Expr}
-
-
-const instance = (X: Instance): Expr => ({tag: "instance", ...X})
-
-const Type = (T:T):Expr => instance({T:{tag: "type"}, X: T})
-
-const Unity: T = {tag: "unity"}
-const unit: Expr = instance({T: Unity, X: null})
+type TTag =
+| "fun"
+| "type"
+| "sigma"
+| "choice"
+| "unity"
 
 
 
-const F = (T: T, fn: (x:Expr) => Expr): Expr => {
-  let v:Var = {tag: "var", T}
-  let ret = fn(v)
-  return instance({T: {tag: "function", X: T, Y: {T: {tag:"type"}, X:ret.T}}, v, X: ret})
-}
-
-const cf = (T:T, e:Expr):Expr => F(T, x=>e)
-
-const Sigma = (T:T, e:Expr):Sigma =>({tag: "sigma", X: T, Y: e})
-const Pair = (X:T, Y:T) => Sigma(X, cf(X, Type(Y)))
-const pair = (X:Expr, Y:Expr):Expr => instance({T: Pair(X.T, Y.T), X: X, b: Y})
-
-const unify = (a:T, b:T): boolean => JSON.stringify(a) == JSON.stringify(b)
+type RetType =  {tag:"const", t:Type} | {tag: "dep", t:A<"fun">};
+type FunT = {tag: "fun", X: Type, Y:RetType}
+type TypT = {tag: "type", X: TTag}
+type SigmaT = {tag: "sigma", X: Type, Y: A<"fun">}
+type ChoiceT = {tag: "choice", X: Type, Y: Type}
+type UnityT = {tag: "unity"}
 
 
-const judge = (e:Expr, ctx: Map<Var, Expr>): boolean => {
+type Type = FunT | TypT | SigmaT | ChoiceT | UnityT
 
-  if (e.tag == "var") return ctx.has(e) && unify(ctx.get(e).T, e.T)
-  if (e.tag == "app"){
-    let {T, f, x} = e
-    let Tx = null
-    if (f.T.tag != "function") return false
 
-    let {X, Y} = (f.T as {X:T, Y:Instance & ({T: Fun} | {T: Type})})
-    if (!unify(x.T, X)) return false
+// ast
 
-    if (Y.T.tag == "type") if (!unify(Y.X as T, f.T)) return false
-    else{
-      
+type VarA = {tag: "var", T: Type}
+type AppA = {tag: "app", f: Ast, x: Ast}
+type MatchA = {tag: "match", T:Type, e: Ast, cases: [FunA, FunA]}
 
-      // let ft = reduce({tag: "app", })
+type FunA = {tag: "fun", T: Type, F: RetType, v?: VarA, X: Ast}
+type TypeA = {tag: "type", T: Type}
+type ChoiceA = {tag: "choice", T: [Type, Type], choice: 0|1, x:Ast}
+type UnityA = {tag: "unity"}
+type SigmaA = {tag: "sigma", T:Type, F: FunA, X: Ast, Y: Ast}
+
+type Ast = VarA | AppA | MatchA| FunA | TypeA | ChoiceA | UnityA | SigmaA
+
+type A <T>  = Ast & {tag: T}
+
+
+let reduce = (x:Ast, ctx: Map<VarA, Ast>): Ast => {
+  switch(x.tag){
+    case "var": return ctx.get(x) || x;
+    case "app":{
+      let {f, x:arg} = x;
+      f = reduce(f, ctx);
+      if (f.tag != "fun") throw new Error("Expected fun, got " + f.tag);
+      ctx.set(f.v, arg)
+      return reduce(f.X, ctx)
     }
-
-
+    case "fun": return {...x, X: reduce(x.X, ctx)}
+    case "choice": return {...x, x: reduce(x.x, ctx)}
+    case "unity": return {tag: "unity"}
+    case "match": 
   }
-
 }
 
-const reduce = (e:Expr, ctx:Map<Var, Expr>): Expr => {
+let call = (f:A<"fun">, x:Ast): Ast => {
+  return reduce({tag: "app", f, x}, new Map());
+}
 
-  if (e.tag == "app"){
-    let {T, f, x} = e
-
-    if (f.tag == "var") return ctx.get(f)
-    if (f.tag == "app") return reduce({tag: "app", T, f:reduce(f,ctx), x}, ctx)
-
-    if (f.tag =="instance"){
-      if (f.T.tag == "function"){
-        let {v, X} = (f as {T:Fun, v:Var, X:Expr})
-        ctx.set(v, x)
-        return reduce(X, ctx)
+let type = (x:Ast): Type =>{
+  switch(x.tag){
+    case "var": return x.T;
+    case "app": {
+      let f = type(x.f);
+      let arg = type(x.x);
+      if (f.tag == "fun"){
+        if (f.Y.tag == "const") return f.Y.t;
+        let t = call(f.Y.t, {tag:"type", T:arg});
+        if (t.tag =="type") return t.T;
+        else throw new Error("Expected type, got " + t.tag);
+      }else{
+        throw new Error("Expected fun, got " + f.tag);
       }
     }
+    case "fun": return {tag: "fun", X: x.T, Y: x.F,}
+    case "choice": return {tag: "choice", X: x.T[0], Y: x.T[1]}
+    case "unity": return {tag: "unity"}
+    case "match": 
   }
-  print("reduce: not implemented", e)
-  throw new Error("reduce: not implemented")
 }
 
 
 
-let x = {tag: "var", T: Unity}
+let F = (T:Type, fn: (x:Ast)=>Ast): Ast => {
+  let vr: VarA = {tag: "var", T};
+  let ret = fn(vr);
+  return{
+    tag: "fun",
+    T, F: {tag: "const", t: ret.T}, X: vr,
+  }
+}
 
 
-print(F(Unity, x=>x))
 
-// const judge = (e:Expr, ctx:Map<Var, T>): boolean =>{
+// type VarE = {tag: "var"}
+// type AppE = {tag: "app", f: Raw, x: Raw}
+// type MatchE = {tag: "match", e: Raw, cases: [R<"fun">, R<"fun">]}
 
-//   if (ctx.has(e)) return unify(ctx.get(e), e.T)
-//   if (e.X == "var") return false
-//   if (e.T.tag == "unity") return true
-//   if (e.T.tag == "function"){
-//     let {v, X} = (e as {T:Fun, v:Var, X:Expr})
-//     ctx.set(v, e.T.X)
-//     return judge(X, ctx)
-//   }
-//   if (e.T.tag == "sigma"){
-//     let {X, b} = (e as {T:Sigma, X:Expr, b:Expr})
-    
+// type FunE = {tag: "fun", v?: VarE, X: Raw}
+// type TypeE = {tag: "type", T: Type}
+// type ChoiceE = {tag: "choice", choice: 0|1, x:Raw}
+// type UnityE = {tag: "unity"}
+// type SigmaE = {tag: "sigma", X: Raw, Y: Raw}
+
+
+// type Raw = VarE | AppE | MatchE | FunE | TypeE | ChoiceE | UnityE | SigmaE
+// type R<T extends string> = Raw & {tag:T}
+
+// type Expr = {T: Type, r: Raw}
+// type E<T extends Type> = Expr & {T:T}
+
+// let unity :Raw = {tag:"unity"}
+
+// const Fun = (X:Type, Y: RetType, vr: VarE, bod: Expr) => {
+
+// }
+
+// let fc = (T:Type, e:Expr): Expr=> ({
+//   r:  {tag: "fun", X: e.r,},
+//   T: {tag: "fun", X: T, Y: {tag: "const", t:e.T}}
+// })
+
+// let F = (T:Type, fn: (x:Expr)=>Expr): Expr =>{
+//   let vr: VarE = {tag: "var"}
+//   let ret = fn({T: T, r: vr})
+//   return {
+//     r: {tag: "fun", v: vr, X: ret.r},
+//     T: {tag: "fun", X: T, Y: {tag: "const", t:ret.T}}
 //   }
 // }
+

@@ -333,7 +333,6 @@ const termline = (tag:string, content): HTMLElement => {
       tag
     ),
     
-    
     {style: {
       width: "100%",
       margin: ".5em 1em .5em 1em",
@@ -483,6 +482,8 @@ const create_terminal = ()=>{
 
 export type repr = {tag: string, args: Record<string, any>}
 
+
+
 export const print = (...x:any[])=>{
 
   out.push(...x);
@@ -495,35 +496,40 @@ export const print = (...x:any[])=>{
 }
 
 
+export const error = (msg: string, ...x:any[]) => {
+  let err = termline("", [span(style({color: "red"}), "ERROR: " + msg),  ...x.map(preview)])
+  logger.append(err)
+  throw new Error(x.map(preview_text).join(" "))
+}
 
-export const plot = (x:number[]) => {
+
+
+export const bars = (x:number[]) => graph(x, true)
+export const plot = (x:number[]) => graph(x, false)
+
+export const graph = (x:number[], bars: boolean) => {
 
   if (logger == null) create_terminal();
   let plt = div()
   let mx = Math.max(...x);
-  // let mn = Math.min(...x);
-  let mn = 0;
+  let mn = Math.min(...x,0);
+  let df = mx - mn;
   let info = {N: x.length, Y: `${mn}..${mx}`, X:x}
   print(info)
   let dx = 200 / (x.length);
-  let dy = 100 / (mx - mn);
-  let path = `M0 100`;
-  for (let i = 0; i < x.length; i++) {
-    let y = 100 - (x[i] - mn) * dy;
-    path += ` L${i*dx} ${y} L${(i+1)*dx} ${y}`;
-  }
-  path += ` L${x.length*dx} 100 Z`;
-  plt.innerHTML = ` <svg viewBox="0 0 200 100" width="calc( min(100%, 400px) )">
-  <path d="${path}" fill="var(--color)" stroke="var(--color)" stroke-width="0" /></svg>`
+  let gy = (y:number) => 100 - (y - mn + df * .05) * 100 / (mx - mn + df * .1);
+  let path = `M0 ${bars ? 100 : gy(x[0])}`
+  + x.map((x, i)=> bars ? ` L${i*dx} ${gy(x)} L${(i+1)*dx} ${gy(x)}` : ` L${i*dx} ${gy(x)}`).join("");
+
+  if (bars)path += ` L${x.length*dx} 100 Z`;
+  let svg = (width: string) => ` <svg viewBox="0 0 200 100" width="${width}"> 
+  <path d="${path}" ${bars? 'fill="var(--color)"  stroke-width="0"' : 'stroke="var(--color)" stroke-width="1" fill=none'} /></svg>`
+  plt.innerHTML = svg("calc( min(100%, 400px) )")
   logger.append(plt)
   plt.onclick = ()=>{
     let pop = div()
-    pop.innerHTML = ` <svg viewBox="0 0 200 100" width="90vw" style="z-index: 4000;">
-    <path d="${path}" fill="var(--color)" stroke="var(--color)" stroke-width="0" /></svg>`
-    let win = popup(p(preview(info), style({
-      margin: "2em",
-      cursor: "pointer",
-    })), pop)
+    pop.innerHTML = svg("90vw")
+    let win = popup(p(preview(info), style({margin: "2em",cursor: "pointer",})), pop)
     pop.addEventListener("click", (e)=>{win.remove()})
   }
   console.log(plt)

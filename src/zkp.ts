@@ -104,10 +104,7 @@ const IFFT = (evals: number[]) =>{
 }
 
 
-let X = Array.from({length: 100}, (_,i)=>i)
 
-plot(X.map(x=>Math.sin(x/10) ))
-bars(X.map(x=>Math.sin(x/10) ))
 
 {
 

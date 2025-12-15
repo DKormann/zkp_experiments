@@ -222,6 +222,7 @@ export const rmap = new WeakMap<any, string>();
 
 export const preview_text = (x:any, maxsize = 100) : string => {
   let t = typ(x);
+  if (t == "string") return x;
   let bracks = brackets(t);
   let inner = ""
   if (rmap.has(x)) return rmap.get(x)
@@ -316,7 +317,7 @@ const full_view = (x:any): HTMLElement => {
 
 }
 
-const termline = (tag:string, content): HTMLElement => {
+const termline = (tag:string, content:any[]): HTMLElement => {
   return p(
 
     span(
@@ -330,7 +331,7 @@ const termline = (tag:string, content): HTMLElement => {
 
         }
       },
-      tag
+      span(tag, style({userSelect: "none"}))
     ),
     
     {style: {
@@ -346,8 +347,6 @@ const termline = (tag:string, content): HTMLElement => {
 
 let logger = null;
 let terminal_input = null;
-
-
 
 export const clear_terminal = () => {
   logger.innerHTML = ""

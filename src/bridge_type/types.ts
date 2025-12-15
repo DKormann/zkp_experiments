@@ -1,9 +1,11 @@
-import { canvas, p, plot, print, print as print_html, style } from "../html";
+import { canvas, p, plot, print, print as print_html, span, style } from "../html";
 
 
 import "./IC"
 
-import { AUX2, MAIN, Nod, Port, Tag } from "./IC";
+import { AUX2, MAIN, Nod, Term, Tag } from "./IC";
+
+
 
 // The most compelling aspect of ICC is how simple, yet powerful, it is. The current implementation is less than 100 lines on HVM, making it much smaller than the Calculus of Constructions, and probably the simplest proof checker in the world. Yet, despite its simplicity, the ICC is extremely powerful. By using its only type former, the bridge (`θx T`), we can derive not just CoC's dependent function type (`Π(x: A) B[x]`), but many other types not available in it, like inductive functions, quotients and so on. Here are some examples:
 

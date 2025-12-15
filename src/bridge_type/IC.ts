@@ -2,7 +2,9 @@ import { print, error, preview_text } from "../html"
 
 type utag = "lam" | "bridge"
 type btag = "app" | "annot" | "dup" | "sup"
-type ztag = "var" | "era" | "root" | "unity"
+type ztag = "var" | "era" | "root" | "unity" | "type" | "Unit"
+
+const ztags = ["var", "era", "root", "unity", "type", "Unit"]
 
 export type Tag = utag | btag | ztag
 export type PN = 0 | 1 | 2
@@ -14,10 +16,10 @@ export const AUX2: PN = 2
 export type Nod = {
   tag: Tag
   label: number
-  con: [Port, Port, Port]
+  con: [Term, Term, Term]
 }
 
-export type Port = {
+export type Term = {
   node: Nod
   num: 0 | 1 | 2
 }
@@ -33,9 +35,9 @@ export const negative_pol = (tag: Tag, num: number) =>{
   }
 }
 
-export const isterm = (p: Port) => negative_pol(p.node.tag, p.num)
-export const other = (p: Port) => p.node.con[p.num]
-export const wire = (ic: Port, other: Port)=> {
+export const isterm = (p: Term) => negative_pol(p.node.tag, p.num)
+export const other = (p: Term) => p.node.con[p.num]
+export const wire = (ic: Term, other: Term)=> {
   if (isterm(ic) == isterm(other)) error("Cannot wire same polarity ports: ", ic, other)
   ic.node.con[ic.num] = other
   other.node.con[other.num] = ic
@@ -43,9 +45,9 @@ export const wire = (ic: Port, other: Port)=> {
 
 
 const erase = (era:Nod, app:Nod) => {
-  print("erase", era.tag, app.tag)
-  print(preview_text(era.con))
-  print(preview_text(app.con[AUX1]))
+  // print("erase", era.tag, app.tag)
+  // print(preview_text(era.con))
+  // print(preview_text(app.con[AUX1]))
 
   wire({node:{...era}, num:MAIN}, app.con[AUX1])
   wire({node:{...era}, num:MAIN}, app.con[AUX2])
@@ -70,16 +72,12 @@ const commute = (dup:Nod, lam:Nod) => {
 
 
 
+let node_view = (node:Nod) => `${node.tag}(${node.con.filter(c=>c).map(c=>c.node.tag).join(", ")})`
+
 const annihilate = (app:Nod, lam:Nod) => {
-  print("annihilate")
-  print(preview_text(app.con))
-  print(preview_text(lam.con))
   if (app.con[AUX1] && lam.con[AUX1]) wire(app.con[AUX1], lam.con[AUX1])
   if (app.con[AUX2] && lam.con[AUX2]) wire(app.con[AUX2], lam.con[AUX2])
 }
-
-
-
 
 
 export const redex = (node:Nod):boolean => {
@@ -87,29 +85,33 @@ export const redex = (node:Nod):boolean => {
   if (node.con[MAIN].num != MAIN) return false
 
   let other = node.con[MAIN].node
-
-
   let tags =  node.tag + " " + other.tag
 
-  if (node.tag == "era" && (other.tag == "app" || other.tag == "annot" || other.tag == "sup")) erase (node, other)
-  else if (tags == "dup lam" || tags == "app sup") commute (node, other)
-  else if (tags == "app lam" || tags == "annot bridge") annihilate (node, other)
-  else return false
+  let handler =
+  (node.tag == "era" && (other.tag == "app" || other.tag == "annot" || other.tag == "sup")) ? erase :
+  (tags == "dup lam" || tags == "app sup") ? commute :
+  (tags == "app lam" || tags == "annot bridge") ? annihilate :
+  null
+
+  if (handler == null) return false
+  // print("handler", tags)
+  handler(node, other);
+  return true
+
 
 }
 
 
-export const exec = (term: Port) => {
+export const exec = (term: Term) => {
 
   let rt = root()
   wire(term, rt)
 
   while (true){
     let red = false
-    for (let node of walk_node(term.node)){
+    for (let node of walk_node(rt.node)){
 
       if (redex(node)) {
-        print("FOUND")
         red = true
         break
       }
@@ -120,10 +122,10 @@ export const exec = (term: Port) => {
 }
 
 
-export const main = (node: Nod): Port => ({node, num: MAIN})
-export const aux1 = (node: Nod): Port => ({node, num: AUX1})
-export const aux2 = (node: Nod): Port => ({node, num: AUX2})
-export const nod = (tag: Tag, label = null, con: [Port, Port, Port] = [null, null, null]): Nod =>{
+export const main = (node: Nod): Term => ({node, num: MAIN})
+export const aux1 = (node: Nod): Term => ({node, num: AUX1})
+export const aux2 = (node: Nod): Term => ({node, num: AUX2})
+export const nod = (tag: Tag, label = null, con: [Term, Term, Term] = [null, null, null]): Nod =>{
   let res : Nod = {
     tag,
     label: label ?? (tag == "dup" || tag == "sup" ? labctr++ : 0),
@@ -133,12 +135,14 @@ export const nod = (tag: Tag, label = null, con: [Port, Port, Port] = [null, nul
   return res;
 }
 
-export const unit = (): Port => main(nod("unity"))
-export const era = (): Port => main(nod("era"))
-export const root = (): Port => main(nod("root"))
+export const unit = (): Term => main(nod("unity"))
+export const Unit = (): Term => main(nod("Unit"))
+export const era = (): Term => main(nod("era"))
+export const root = (): Term => main(nod("root"))
 
-export const app = (f: Port, x: Port): Port => main(nod("app", 0, [f, x, root()]))
-export const annot = (x: Port, T: Port): Port => main(nod("annot", 0, [x, T, root()]))
+export const app = (f: Term, ...x: Term[]): Term => x.reduce((acc, x) => exec(aux2(nod("app", 0, [acc, x, root()]))), f)
+export const annot = (x: Term, T: Term): Term => 
+  aux2(nod("annot", 0, [x, T, root()]))
 
 
 export function* walk_node (x:Nod, ctx: Set<Nod>= null) : Generator<Nod> {
@@ -152,24 +156,20 @@ export function* walk_node (x:Nod, ctx: Set<Nod>= null) : Generator<Nod> {
 }
 
 
-for (let x of walk_node(unit().node)){
-  print(x)
-}
-
 
 let labctr = 70;
 
-const dups = (port: Port, label: number = null): [Port, Port] => {
+const dups = (port: Term, label: number = null): [Term, Term] => {
   if (label == null) label = labctr++
   let d = nod("dup", label, [port, era(), era()])
   return [aux1(d), aux2(d)]
 }
 
-const UNode = (op: utag, fn: (x: Port) => Port): Port => {
+const UNode = (op: utag, fn: (x: Term) => Term): Term => {
 
   let x = unit()
   let bod = fn(x)
-  let lam = nod("lam", 0, [root(), null, bod])
+  let lam = nod(op, 0, [root(), null, bod])
   let bindr = aux1(lam)
   let prev = null
 
@@ -197,36 +197,70 @@ const UNode = (op: utag, fn: (x: Port) => Port): Port => {
 
 }
 
-const Lam = (fn: (x: Port) => Port) => UNode("lam", fn)
-const Bridge = (fn: (x: Port) => Port) => UNode("bridge", fn)
+const Lam = (fn: (x: Term) => Term) => UNode("lam", fn)
+const Bridge = (fn: (x: Term) => Term) => UNode("bridge", fn)
 
-const view_term = (term: Port): string => {
+const view_term = (term: Term, ctx: Map<Nod, number> = null): string => {
   let {node, num} = term
   let {tag, label, con} = node
-  let ctx = new Map<Nod, number>();
-  let varname = (x:Nod) => "x" + ctx.set(x, ctx.get(x) ?? ctx.size).get(x)
+  ctx = ctx ?? new Map<Nod, number>();
+  let varname = (x:Nod) => {
+    let i = ctx.set(x, ctx.get(x) ?? ctx.size).get(x);
+    return i > 26 ?  String.fromCharCode(i/26 + 96) : "" + String.fromCharCode(i%26 + 97);
+  }
   if (tag == "lam" || tag == "bridge"){
     if (num == AUX1) return varname(node)
-    return `${tag == "lam" ? "λ" : "θ"}${ con[AUX1].node.tag == "era" ? "" : varname(node)}.${view_term(con[AUX2])}`
+    return `${tag == "lam" ? "λ" : "θ"}${ con[AUX1].node.tag == "era" ? "" : varname(node)}.${view_term(con[AUX2], ctx)}`
   }
-  if (tag == "app") return `(${view_term(con[0])} ${view_term(con[1])})`
-  if (tag == "annot") return `(${view_term(con[0])} : ${view_term(con[1])})`
+  if (tag == "app") return `(${view_term(con[0], ctx)} ${view_term(con[1], ctx)})`
+  if (tag == "annot") return `{${view_term(con[0], ctx)} : ${view_term(con[1], ctx)}}`
   if (tag == "unity") return "()"
   if (tag == "era") return "*"
   if (tag == "root") return "@"
+  if (tag == "Unit") return "Unit"
   return `[[${tag}]]`
 }
 
-const print_term = (term: Port) => print(view_term(term))
+const print_term = (term: Term) => print(view_term(term))
 
 
 
-{
-
-  let t = app(Lam((x:Port)=>unit()), unit())
+if (0){
+  
+  let t = app(Lam((x:Term)=>x), Lam((x:Term)=>x))
+  t = annot(Bridge((x:Term)=>x), unit())
   print_term(t)
-  exec(t)
+  print(t)
+  
+  print_term(t)
+  t = exec(t)
   print_term(t)
 }
 
 
+
+
+const Fun = () => Lam((A: Term) => Lam((B: Term) => Bridge((f: Term) => Lam((x: Term) =>
+  annot(app(f, annot(x, A)), B)
+))))
+
+
+
+
+
+let ann = (t: Term, T: Term) => {
+  let at = annot(T, t)
+  let p = view_term(at)
+  at = exec(at)
+
+  let r = view_term(at)
+  print(p + " ~> " + r)
+  return (p + " ~> " + r)
+}
+
+
+
+let T = () => app(Fun(), Unit(), Unit())
+
+
+print([view_term(T()), ann(unit(), T()), ann(Lam((x: Term) => x), T())].join("\n"))
